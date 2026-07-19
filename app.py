@@ -108,7 +108,7 @@ def format_notification(status: str, extra: str = "", error: str = "", expiry_da
         masked_email = EMAIL[:2] + '****' 
     
     lines = [
-        "🇫🇮 Bot-hosting 续期通知",
+        "🇫🇮 Optiklink 账户检查通知",
         "",
         f"{status}",
         f"👤 登录账户: {masked_email}",
@@ -121,23 +121,9 @@ def format_notification(status: str, extra: str = "", error: str = "", expiry_da
         lines.append(extra)
     if error:
         lines.append(f"⚠️ 错误信息: {error}")
-    lines.append(f"⏱️ 登录时间: {now}")
+    lines.append(f"⏱️ 检查时间: {now}")
     return "\n".join(lines)
 
-# 等待Turnstile验证通过
-def wait_for_turnstile_pass(sb, timeout=30):
-    start = time.time()
-    cf_indicators = ["verify you are human", "确认您是真人", "troubleshoot", "just a moment"]
-    while time.time() - start < timeout:
-        page_lower = sb.get_page_source().lower()
-        if not any(x in page_lower for x in cf_indicators):
-            print("✅ Turnstile 验证已通过")
-            # sb.save_screenshot("turnstile_passed.png")
-            return True
-        sb.sleep(1)
-    print("❌ Turnstile 验证超时未通过")
-    return False
-    
 # 获取当前出口ip
 def get_current_ip(proxy_server: str = "") -> str:
     proxies = None
@@ -184,7 +170,7 @@ def extract_expiry_date(page_source: str) -> str:
 
 #   Discord OAuth 登录（SESSION_TOKEN 失效时的备用方案）
 DISCORD_CLIENT_ID   = "884382422530158623"
-OAUTH_REDIRECT_URI  = "https://bot-hosting.net/login"
+OAUTH_REDIRECT_URI  = "https://optiklink.net/auth"
 OAUTH_SCOPE         = "identify email guilds"
 DISCORD_API         = "https://discord.com/api/v9/oauth2/authorize"
 DISCORD_UA = (
@@ -195,9 +181,9 @@ STATE_RE = re.compile(r"[?&]state=([^&]+)")
 
 
 def capture_discord_state(sb) -> str:
-    """打开 /login/discord，从落地页 URL 里提取本次会话的 state"""
+    """打开 /auth/discord，从落地页 URL 里提取本次会话的 state"""
     print("🔎 获取 Discord OAuth state...")
-    sb.uc_open_with_reconnect("https://bot-hosting.net/login/discord", reconnect_time=4)
+    sb.uc_open_with_reconnect("https://optiklink.net/auth/discord", reconnect_time=4)
     time.sleep(2)
 
     url = sb.get_current_url()
@@ -216,7 +202,7 @@ def capture_discord_state(sb) -> str:
 
 
 def discord_authorize(state: str) -> str:
-    """用 DC_TOKEN 直接完成 Discord 侧授权，返回跳转回 bot-hosting.net 的 location"""
+    """用 DC_TOKEN 直接完成 Discord 侧授权，返回跳转回 optiklink.net 的 location"""
     query = urllib.parse.urlencode({
         "client_id":     DISCORD_CLIENT_ID,
         "response_type": "code",
@@ -286,7 +272,7 @@ def discord_authorize(state: str) -> str:
 
 
 def do_discord_login(sb) -> bool:
-    """通过 Discord Token 走完整 OAuth 流程登录 bot-hosting.net"""
+    """通过 Discord Token 走完整 OAuth 流程登录 optiklink.net"""
     print("\n🔑 通过 Discord Token 登录...")
 
     state = capture_discord_state(sb)
@@ -309,8 +295,8 @@ def do_discord_login(sb) -> bool:
         sb.save_screenshot("login_banned.png")
         return False
 
-    if "bot-hosting.net" not in url:
-        print(f"❌ 回调后未跳转至 bot-hosting.net，当前 URL：{url}")
+    if "optiklink.net" not in url:
+        print(f"❌ 回调后未跳转至 optiklink.net，当前 URL：{url}")
         sb.save_screenshot("login_no_redirect.png")
         return False
 
@@ -326,7 +312,7 @@ def do_discord_login(sb) -> bool:
     for _ in range(30):
         url = sb.get_current_url()
         path = urllib.parse.urlparse(url).path
-        if "bot-hosting.net" in url and path != "/login" and not path.startswith("/login/discord"):
+        if "optiklink.net" in url and path != "/auth" and not path.startswith("/auth/discord"):
             print(f"✅ Discord OAuth 登录成功！当前页面：{url}")
             return True
         time.sleep(0.5)
@@ -344,7 +330,7 @@ def do_discord_login(sb) -> bool:
 # 主流程
 def main():
     print("#" * 25)
-    print("   Bot-hosting 自动续期")
+    print("   Optiklink 账户检查")
     print("#" * 25)
 
     IS_PROXY = os.environ.get("IS_PROXY", "false").lower() == "true"
@@ -373,24 +359,24 @@ def main():
         # 方式1: SESSION_TOKEN Cookie 登录（默认）
         if SESSION_TOKEN:
             print("🚀 启动浏览器...")
-            sb.open("https://bot-hosting.net/")
+            sb.open("https://optiklink.net/")
             sb.wait_for_ready_state_complete()
             sb.sleep(2)
 
             print("📝 注入 Cookie...")
             for name, value in COOKIES.items():
                 if value:
-                    sb.add_cookie({"name": name, "value": value, "domain": "bot-hosting.net"})
+                    sb.add_cookie({"name": name, "value": value, "domain": "optiklink.net"})
 
-            print("🌐 访问 https://bot-hosting.net/a/billings ...")
-            sb.open("https://bot-hosting.net/a/billings")
+            print("🌐 访问 https://optiklink.net/a/billings ...")
+            sb.open("https://optiklink.net/a/billings")
             sb.wait_for_ready_state_complete()
             sb.sleep(3)
             current_url = sb.get_current_url()
             current_title = sb.get_title()
             print(f"📝 当前URL: {current_url}, Title: {current_title}")
 
-            if "/a/billings" in current_url and "/login" not in current_url and "error=" not in current_url:
+            if "/a/billings" in current_url and "/auth" not in current_url and "error=" not in current_url:
                 login_ok = True
                 print("✅ SESSION_TOKEN 登录成功, 当前已到达账单页")
             else:
@@ -401,8 +387,8 @@ def main():
             _LOGIN_METHOD = "Discord Token"
             print("\n🔄 SESSION_TOKEN 登录失败或未配置，尝试 Discord OAuth 登录...")
             if do_discord_login(sb):
-                print("🌐 访问 https://bot-hosting.net/a/billings ...")
-                sb.open("https://bot-hosting.net/a/billings")
+                print("🌐 访问 https://optiklink.net/a/billings ...")
+                sb.open("https://optiklink.net/a/billings")
                 sb.wait_for_ready_state_complete()
                 sb.sleep(3)
                 current_url = sb.get_current_url()
@@ -429,144 +415,48 @@ def main():
         if _LOGIN_METHOD == "Discord Token":
             print("ℹ️ 本次使用 Discord OAuth 登录，新的 SESSION_TOKEN 将自动更新到 Secrets")
 
-        # 提取当前到期日期
+        # 提取当前到期日期和倒计时信息
         sb.sleep(2)
         page_source = sb.get_page_source()
         current_expiry = extract_expiry_date(page_source)
+        
+        # 提取倒计时信息
+        countdown_text = None
+        countdown_match = re.search(r"Renew in (\d{2}:\d{2}:\d{2})", page_source)
+        if countdown_match:
+            countdown_text = countdown_match.group(1)
+        
         if current_expiry:
             print(f"📅 当前到期日期: {current_expiry}")
         else:
             print("⚠️ 未能提取当前到期日期")
 
-        # 寻找外部续期按钮
-        outer_renew_selector = None
-        countdown_text = None
-        possible_selectors = [
-            'button:contains("Renew")',
-            'button:contains("Renew free plan")',
-            'a:contains("Renew")',
-            '[class*="renew"]',
-            '[class*="Renew"]',
-        ]
-
-        for selector in possible_selectors:
-            try:
-                if sb.is_element_visible(selector):
-                    button_text = sb.get_text(selector)
-                    if "Renew in" in button_text:
-                        match = re.search(r"Renew in (\d{2}:\d{2}:\d{2})", button_text)
-                        if match:
-                            countdown_text = match.group(1)
-                        break
-                    elif "Renew" in button_text and "in" not in button_text.lower():
-                        outer_renew_selector = selector
-                        print(f"✅ 续期按钮可用: '{button_text}'")
-                        break
-            except Exception as e:
-                pass
-
-        # 点击外部续期按钮等待弹窗
-        if outer_renew_selector:
-            print("🔄 点击外部续期按钮，等待验证窗口...")
-            try:
-                sb.sleep(2)
-                sb.click(outer_renew_selector)
-                sb.sleep(15)  # 等待模态框加载，可能因网络因素加载慢
-            except Exception as e:
-                print(f"❌ 点击外部按钮失败: {e}")
-                send_telegram_message(format_notification("❌ 续期失败", error="点击外部续期按钮出错"))
-                return
-
-            # 处理弹窗中的 Turnstile
-            print("🔒 检测弹窗中的 Turnstile 验证...")
-            turnstile_passed = False
-            for attempt in range(1, 4):
-                try:
-                    sb.uc_gui_click_captcha()
-                    time.sleep(12)
-                except Exception as e:
-                    print(f"⚠️ 点击 Turnstile 出错: {e}")
-
-                if wait_for_turnstile_pass(sb, timeout=20):
-                    turnstile_passed = True
-                    break
-                else:
-                    print(f"⏳ 第 {attempt} 次未通过，重试点击...")
-
-            if not turnstile_passed:
-                print("❌ Turnstile 验证最终未通过，脚本退出")
-                send_telegram_message(format_notification("❌ 续期失败", error="Turnstile 验证未通过"))
-                return
-
-            # 点击续期按钮
-            print("⏳ 等待续期按钮可用并点击...")
-            time.sleep(5) 
-
-            modal_button_clicked = False
-            try:
-                sb.click('button:contains("Renew for 4 days")', timeout=8)
-                modal_button_clicked = True
-                print("✅ 已点击续期按钮")
-            except Exception as e:
-                print(f"续期按钮点击失败: {e}")
-
-            print("⏳ 等待新的过期时间...")
-            sb.sleep(6)
-
-            # 提取新的到期日期和倒计时
-            new_page_text = sb.get_page_source()
-            new_expiry = extract_expiry_date(new_page_text)
-            new_match = re.search(r"Renew in (\d{2}:\d{2}:\d{2})", new_page_text)
-            if new_match:
-                new_countdown = new_match.group(1)
-                print(f"✅ 续期成功！新的倒计时: {new_countdown}")
-                if new_expiry:
-                    print(f"📅 新的到期日期: {new_expiry}")
-                send_telegram_message(
-                    format_notification(
-                        "✅ 续期成功",
-                        extra=f"⏱️ 可续期时间: {format_countdown(new_countdown)}后",
-                        expiry_date=new_expiry or "（未获取到）"
-                    )
+        # 发送账户状态通知
+        if countdown_text:
+            friendly = format_countdown(countdown_text)
+            print(f"⏱️ 可续期倒计时: {countdown_text} ({friendly})")
+            send_telegram_message(
+                format_notification(
+                    "✅ 账户状态正常",
+                    extra=f"⏱️ 可续期时间: {friendly}后",
+                    expiry_date=current_expiry or "（未获取到）"
                 )
-            else:
-                if new_expiry and new_expiry != current_expiry:
-                    print(f"✅ 续期成功，到期日期已更新为: {new_expiry}")
-                    send_telegram_message(
-                        format_notification(
-                            "✅ 续期成功",
-                            extra="到期日期已更新",
-                            expiry_date=new_expiry
-                        )
-                    )
-                else:
-                    print("⚠️ 续期结果未知，到期日期未变化，请手动检查")
-                    send_telegram_message(
-                        format_notification(
-                            "⚠️ 续期可能未成功",
-                            extra="请登录后台检查",
-                            expiry_date=current_expiry or "（未获取到）"
-                        )
-                    )
-
+            )
         else:
-            if countdown_text:
-                friendly = format_countdown(countdown_text)
-                print(f"⏳ 未到续期时间，倒计时: {countdown_text} ({friendly})")
+            if current_expiry:
+                print(f"📅 到期时间: {current_expiry}")
                 send_telegram_message(
                     format_notification(
-                        "⏳ 未到续期时间",
-                        extra=f"⏱️ 可续期时间: {friendly}后",
-                        expiry_date=current_expiry or "（未获取到）"
+                        "✅ 账户状态正常",
+                        expiry_date=current_expiry
                     )
                 )
             else:
-                print("ℹ️ 未找到续期按钮或倒计时，状态未知")
+                print("ℹ️ 无法获取账户到期信息，请手动检查")
                 send_telegram_message(
                     format_notification(
-                        "ℹ️ 无需续期",
-                        extra="当前状态未知，请手动检查",
-                        expiry_date=current_expiry or "（未获取到）"
+                        "ℹ️ 账户检查完成",
+                        extra="无法自动获取到期信息，请登录后台检查"
                     )
                 )
 
