@@ -183,7 +183,7 @@ STATE_RE = re.compile(r"[?&]state=([^&]+)")
 def capture_discord_state(sb) -> str:
     """打开 /auth/discord，从落地页 URL 里提取本次会话的 state"""
     print("🔎 获取 Discord OAuth state...")
-    sb.uc_open_with_reconnect("https://optiklink.net/auth/discord", reconnect_time=4)
+    sb.uc_open_with_reconnect("https://optiklink.net/auth", reconnect_time=4)
     time.sleep(2)
 
     url = sb.get_current_url()
