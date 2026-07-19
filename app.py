@@ -387,8 +387,8 @@ def main():
             _LOGIN_METHOD = "Discord Token"
             print("\n🔄 SESSION_TOKEN 登录失败或未配置，尝试 Discord OAuth 登录...")
             if do_discord_login(sb):
-                print("🌐 访问 https://optiklink.net/a/billings ...")
-                sb.open("https://optiklink.net/a/billings")
+                print("🌐 访问 https://optiklink.net/auth ...")
+                sb.open("https://optiklink.net/auth")
                 sb.wait_for_ready_state_complete()
                 sb.sleep(3)
                 current_url = sb.get_current_url()
